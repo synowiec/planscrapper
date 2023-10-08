@@ -3,24 +3,10 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
-PAGE = 'http://www.plan.pwsz.legnica.edu.pl/checkSpecjalnoscStac.php?specjalnosc=s1Z'
 DAY_REGEX = r'\b(?:Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota|Niedziela) \d{4}-\d{2}-\d{2}\b'
 HOUR_REGEX = r'\d{2}:\d{2}-\d{2}:\d{2}'
-CELLS_CLASS_NAME = ['test', 'test2']
-DATE_CLASS_NAME = 'nazwaDnia'
-HOUR_CLASS_NAME = 'godzina'
 TIMEZONE = 'Europe/Warsaw'
-TOPICS = {
-    'S-Wswpk': 'Szkolenie - Wsparcie studentów w procesie kształcenia',
-    'Mdw': 'Moduły do wyboru',
-    'So': 'Statystyka opisowa',
-    'Mikro': 'Mikroekonomia',
-    '2So': '2 Socjologia organizacji',
-    'Prawo': 'Prawo',
-    'Matem': 'Matematyka',
-    'Ti': 'Technologia informacyjna',
-    'Modw': 'Moduł ogólnouczelniany do wyboru'
-}
+TOPICS = dict()
 
 
 def get_page_content(page):
@@ -29,10 +15,8 @@ def get_page_content(page):
     return soup
 
 
-def get_days(source):
-    table = source.find_all("table", {"class": "TabPlan"})[0]
-    rows = table.find_all('tr')
-    return rows
+def get_trs(source):
+    return source.find_all('tr')
 
 
 def tds_to_list(cells):
@@ -94,30 +78,35 @@ def day_to_json(day, matching_indexes, json):
 
     for i, spec in enumerate(s):
         for hour in hours:
+            if len(hour) == 0:
+                continue
             time = hour[0].split('-')
+
             start = time[0].split(':')
             start_h = int(start[0])
             start_m = int(start[1])
+            start_datetime = datetime(yyyy, mm, dd, start_h, start_m, 0)
 
             end = time[1].split(':')
             end_h = int(end[0])
             end_m = int(end[1])
+            end_datetime = datetime(yyyy, mm, dd, end_h, end_m, 0)
 
             topic = hour[i * 3 + 1].strip()
 
             teacher = hour[i * 3 + 2].strip()
             place = hour[i * 3 + 3].strip()
-            if topic != '-':
+            if topic != '-' and start_datetime > datetime.now():
                 topic = topic[:-1].split(' (')
                 topic = '[' + topic[1] + '] ' + TOPICS.get(topic[0], topic[0])
 
                 event = {
                     "start": {
-                        'dateTime': datetime(yyyy, mm, dd, start_h, start_m, 0).astimezone().isoformat(),
+                        'dateTime': start_datetime.astimezone().isoformat(),
                         'timeZone': TIMEZONE
                     },
                     "end": {
-                        'dateTime': datetime(yyyy, mm, dd, end_h, end_m, 0).astimezone().isoformat(),
+                        'dateTime': end_datetime.astimezone().isoformat(),
                         'timeZone': TIMEZONE
                     },
                     "summary": topic,
@@ -134,11 +123,31 @@ def json_add_day_to_base(spec, event, json):
             break
 
 
-class Scrapper:
-    def __init__(self):
-        content = get_page_content(PAGE)
+def generate_topics(legend):
+    rows = get_trs(legend)
+    rows = rows[1:]  # Skip Headers
+    for row in rows:
+        tds = get_tds(row)
+        TOPICS[tds[0]] = tds[1]
 
-        days = get_days(content)
+
+class Scrapper:
+    def __init__(self, link):
+        content = get_page_content(link)
+
+        tab_plan = content.find_all("table", {"class": "TabPlan"})
+        tab_legend = content.find_all("table", {"class": "TabLegenda"})
+
+        plan = tab_plan[0]
+
+        if len(tab_legend) > 0:
+            legend = tab_legend[1]
+        else:
+            legend = tab_plan[1]
+
+        days = get_trs(plan)
+
+        generate_topics(legend)
 
         specs = get_specs_names(days)
 

@@ -1,23 +1,57 @@
+from calendar_controller import GoogleCalendarAPI
 from scrapper import Scrapper
-from calendarAPI import GoogleCalendarAPI
+from events_controller import GoogleEventAPI
+import json
 
-CALENDARS = {
-    's1Z1': 'c_fcaca62096e0c7635bc913740fc1628bd9226c1bad7e162a96668d489b29fa34@group.calendar.google.com',
-    's1Z2u': 'c_e318bbbf3b9f05e912ed76d8580020acffeec01918fc15faa08f67dab07bebc9@group.calendar.google.com',
-    's1Z3u': 'c_60aaa06f57fda41120b2aaffe89955be2594aec2bae430bf9fdd3e39e479637d@group.calendar.google.com',
-    's1Z4u': 'c_60984bf3731ed32e6cff4ed47de821fc6956514a770f07915883187c68aca9d8@group.calendar.google.com'
-}
+PLANS_TO_SCRAP_JSON = 'plans_to_scrap.json'
+
+
+def load_json(file):
+    with open(file) as json_file:
+        data = json.load(json_file)
+    return data
 
 
 def main():
+    plans_to_scrap = load_json(PLANS_TO_SCRAP_JSON)
+    events = GoogleEventAPI()
     calendar = GoogleCalendarAPI()
-    specs = Scrapper()
-    for spec in specs.json['specs']:
-        spec_name = spec['name']
-        print(f'Processing {spec_name}... ', end='')
-        calendar.reload_calendar(CALENDARS[spec_name], spec['events'])
-        print('Done.')
+
+    for spec in plans_to_scrap:
+        spec_name = spec
+        spec_link = plans_to_scrap[spec]
+
+        # Create Scrapper
+        scrapper = Scrapper(spec_link)
+        groups = set([group['name'] for group in scrapper.json['specs']])
+
+        # Prepare Calendars
+        # Check if each group exists; if not - create calendar with proper privileges
+        existing_calendars = set([c['summary'] for c in calendar.items])
+        calendars_to_create = groups - existing_calendars
+
+        # Create missing calendars
+        for c in calendars_to_create:
+            new_calendar_id = calendar.create_calendar(c)
+            # Set public privileges
+            calendar.create_rule_for_public_access(new_calendar_id)
+
+        # Delete upcoming events and add new events
+        for s in scrapper.json['specs']:
+            group_name = s['name']
+            print('Processing ' + group_name + '...', end='')
+            calendar_id = next(item['id'] for item in calendar.items if item['summary'] == group_name)
+            events_to_load = s['events']
+            events.reload_calendar(calendar_id, events_to_load)
+
+    print('All plans scrapped and updated.')
+
+
+def show_links():
+    calendar = GoogleCalendarAPI()
+    calendar.generate_links()
 
 
 if __name__ == '__main__':
     main()
+    show_links()
