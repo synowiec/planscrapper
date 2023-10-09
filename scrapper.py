@@ -5,7 +5,6 @@ from datetime import datetime
 DAY_REGEX = r'\b(?:Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota|Niedziela) \d{4}-\d{2}-\d{2}\b'
 HOUR_REGEX = r'\d{2}:\d{2}-\d{2}:\d{2}'
 TIMEZONE = 'Europe/Warsaw'
-PLANS_TO_SCRAP_JSON = 'plans_to_scrap.json'
 NO_OF_COLUMNS = 3
 
 
@@ -61,7 +60,6 @@ def process_plan(df, legend, json, from_datetime, specs):
     no_of_columns = len(df.columns)
     no_of_rows = len(df)
 
-    df.to_csv('plan.csv')
     # Initialize variables
     date = None
     start_datetime = None

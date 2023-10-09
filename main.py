@@ -9,7 +9,7 @@ FROM_DATETIME = datetime.now()
 
 
 def load_json(file):
-    with open(file) as json_file:
+    with open(file, encoding='utf-8') as json_file:
         data = json.load(json_file)
     return data
 
