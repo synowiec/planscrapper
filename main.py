@@ -2,8 +2,10 @@ from calendar_controller import GoogleCalendarAPI
 from scrapper import Scrapper
 from events_controller import GoogleEventAPI
 import json
+from datetime import datetime
 
 PLANS_TO_SCRAP_JSON = 'plans_to_scrap.json'
+FROM_DATETIME = datetime.now()
 
 
 def load_json(file):
@@ -18,11 +20,10 @@ def main():
     calendar = GoogleCalendarAPI()
 
     for spec in plans_to_scrap:
-        spec_name = spec
         spec_link = plans_to_scrap[spec]
 
         # Create Scrapper
-        scrapper = Scrapper(spec_link)
+        scrapper = Scrapper(spec_link, FROM_DATETIME)
         groups = set([group['name'] for group in scrapper.json['specs']])
 
         # Prepare Calendars
@@ -38,11 +39,12 @@ def main():
 
         # Delete upcoming events and add new events
         for s in scrapper.json['specs']:
+            print('Processing ' + s['name'] + '...', end='')
             group_name = s['name']
-            print('Processing ' + group_name + '...', end='')
             calendar_id = next(item['id'] for item in calendar.items if item['summary'] == group_name)
             events_to_load = s['events']
             events.reload_calendar(calendar_id, events_to_load)
+            print('Done.')
 
     print('All plans scrapped and updated.')
 

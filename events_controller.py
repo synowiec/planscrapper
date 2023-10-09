@@ -20,17 +20,14 @@ def delete_all_upcoming_events(service, calendar_id):
     events = events_result.get('items', [])
 
     if not events:
-        print('No upcoming events found.', end='')
         return
 
-    print(f'Found {len(events)} old events. Deleting...', end='')
     # Delete all events
     for event in events:
         service.events().delete(calendarId=calendar_id, eventId=event['id']).execute()
 
 
 def add_events(service, calendar_id, events):
-    print('Adding...', end='')
     for event in events:
         event = service.events().insert(calendarId=calendar_id, body=event).execute()
 
@@ -50,5 +47,3 @@ class GoogleEventAPI:
             add_events(self.service, calendar_id, events)
         except HttpError as error:
             print('An error occurred: %s' % error)
-
-        print('Done.')

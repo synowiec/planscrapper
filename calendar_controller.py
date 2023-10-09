@@ -1,7 +1,6 @@
-from pprint import pprint
-
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 SCOPES = [
     'https://www.googleapis.com/auth/calendar',
@@ -24,7 +23,10 @@ class GoogleCalendarAPI:
         self.recalculate_list_of_calendars()
 
     def recalculate_list_of_calendars(self):
-        self.items = self.service.calendarList().list().execute()['items']
+        try:
+            self.items = self.service.calendarList().list().execute()['items']
+        except HttpError:
+            self.items = None
 
     def get_list_of_calendars(self):
         return self.items
@@ -39,7 +41,12 @@ class GoogleCalendarAPI:
 
     def delete_calendar(self, calendar_id):
         deleted_calendar = self.service.calendars().delete(calendarId=calendar_id).execute()
+        print(f'Calendar id {calendar_id} deleted.')
         self.recalculate_list_of_calendars()
+
+    def delete_all_calendars(self):
+        for item in self.items:
+            self.delete_calendar(item['id'])
 
     def get_calendar_details(self, calendar_id):
         calendar = self.service.calendars().get(calendarId=calendar_id).execute()
@@ -55,8 +62,10 @@ class GoogleCalendarAPI:
 
     def get_list_acl_rules(self, calendar_id):
         rule = self.service.acl().list(calendarId=calendar_id).execute()
-        pprint(rule)
 
     def generate_links(self):
-        for item in self.items:
-            print(create_share_link(item['id'], item['summary']))
+        if self.items:
+            for item in self.items:
+                print(create_share_link(item['id'], item['summary']))
+        else:
+            print('No calendars available.')
