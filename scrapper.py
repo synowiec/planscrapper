@@ -115,7 +115,7 @@ def create_legend_map(df):
     legend = dict()
     no_of_rows = len(df)
 
-    for i in range(1, no_of_rows):
+    for i in range(no_of_rows):
         legend[df.iloc[i][0]] = df.iloc[i][1]
     return legend
 
