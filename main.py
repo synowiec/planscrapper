@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 PLANS_TO_SCRAP_JSON = 'plans_to_scrap.json'
-FROM_DATETIME = datetime.now()
+FROM_DATETIME = datetime(2023, 10, 8, 10, 0, 0)
 
 
 def load_json(file):
@@ -43,7 +43,7 @@ def main():
             group_name = s['name']
             calendar_id = next(item['id'] for item in calendar.items if item['summary'] == group_name)
             events_to_load = s['events']
-            events.reload_calendar(calendar_id, events_to_load)
+            events.reload_calendar(calendar_id, events_to_load, FROM_DATETIME)
             print('Done.')
 
     print('All plans scrapped and updated.')
@@ -56,4 +56,3 @@ def show_links():
 
 if __name__ == '__main__':
     main()
-    show_links()
